@@ -1,0 +1,64 @@
+{
+  "auth": {
+    "token": "YOUR_BEARER_TOKEN_FROM_LOCAL_STORAGE",
+    "cookie_string": "ua=...; ov=...; id=...; mdata=...",
+    "cookies": {},
+    "headers": {
+      "Accept": "*/*",
+      "Content-Type": "application/json",
+      "Origin": "https://www.okcupid.com",
+      "Priority": "u=1, i",
+      "Referer": "https://www.okcupid.com/",
+      "Sec-Ch-Ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand)\";v=\"24\"",
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": "\"Windows\"",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-site",
+      "X-Okcupid-Auth-V": "1",
+      "X-Okcupid-Device-Id": "3d2ea53128751dff",
+      "X-Okcupid-Locale": "en",
+      "X-Okcupid-Platform": "DESKTOP",
+      "X-Okcupid-Version": "395"
+    }
+  },
+  "proxy": {
+    "type": "socks5",
+    "host": "proxy.example.com",
+    "port": 1080,
+    "username": "your_username",
+    "password": "your_password"
+  },
+  "api": {
+    "base_url": "https://www.okcupid.com",
+    "api_host": "https://e2p-okapi.api.okcupid.com",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+  },
+  "graphql": {
+    "swipe_path": "/graphql/WebUserVote",
+    "discovery_path": "/graphql/WebStackUsers",
+    "initial_stacks_path": "/graphql/WebInitialStacksMenu"
+  },
+  "openai": {
+    "api_key": "YOUR_OPENAI_API_KEY",
+    "model": "gpt-4o-mini"
+  },
+  "auto_chat": {
+    "funnel": "YOUR_SNAP_USERNAME",
+    "poll_seconds": 20,
+    "cta_min_msgs": 2,
+    "cta_max_msgs": 4,
+    "delay_chat_part_min": 1.0,
+    "delay_chat_part_max": 3.0
+  },
+  "test_ids": {
+    "profile_user_id": "SAMPLE_PROFILE_UID",
+    "target_user_id": "SAMPLE_TARGET_UID_FOR_SWIPE",
+    "thread_id": "SAMPLE_AI_CHAT_THREAD_ID"
+  },
+  "swipe": {
+    "direction": "like",
+    "max_swipes": 10,
+    "delay_seconds": 1.5
+  }
+}

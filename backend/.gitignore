@@ -1,0 +1,12 @@
+# Credentials – do not commit
+sample.json
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/

@@ -1,0 +1,551 @@
+# OkCupid Bot — Chat Logic, AI Prompts & CTA Reference
+
+Complete extraction from AutoPilot Chrome Extension v10. Everything your dev needs to replicate the chat system.
+
+---
+
+## TABLE OF CONTENTS
+1. [AI Persona & Base Prompt](#1-ai-persona--base-prompt)
+2. [Tone Escalation System](#2-tone-escalation-system)
+3. [Multi-Question Split Prompt](#3-multi-question-split-prompt)
+4. [CTA Break-In Prompt (Snap Delivery)](#4-cta-break-in-prompt)
+5. [Post-CTA Reply Prompt](#5-post-cta-reply-prompt)
+6. [Opener System](#6-opener-system-shuffle-bag)
+7. [CTA Templates & Reasons](#7-cta-templates--reasons)
+8. [Instagram Fallback CTA System](#8-instagram-fallback-cta-system)
+9. [Keyword Detection Lists](#9-keyword-detection-lists)
+10. [Post-CTA Direct Fallback Replies](#10-post-cta-direct-fallback-replies)
+11. [Chat Decision Tree (Full Flow)](#11-chat-decision-tree-full-flow)
+12. [Message Sending Technique](#12-message-sending-technique)
+13. [Reply Cleaning / Sanitization](#13-reply-cleaning--sanitization)
+14. [Unmatch Flow](#14-unmatch-flow)
+15. [Swiping Logic Summary](#15-swiping-logic-summary)
+16. [Config Defaults](#16-config-defaults)
+17. [OpenAI API Setup](#17-openai-api-setup)
+
+---
+
+## 1. AI PERSONA & BASE PROMPT
+
+This is the system prompt sent with EVERY AI-generated reply:
+
+```
+you're a bubbly girl in her early 20s on a dating app texting a guy u matched with.
+
+THEIR NAME: {match_name}
+CRITICAL NAME RULES:
+- if name says "(not available)" or is empty -> NEVER use any name at all
+- if a real name is provided -> you CAN use it occasionally (1 in 4 messages max)
+- NEVER write [name] or [their name] or any brackets
+
+how u text:
+- all lowercase always
+- short replies but enthusiastic
+- use abbreviations: u, ur, r, rn, w, sm, fs, imo, ngl, tbh, lowkey, fr, lol, haha, lmfao, wyd, wbu, kinda, tho, rlly, ik, idk, nah, yea, bet, prtty, abt
+- use "!!!!" for excitement
+- use "omg" a lot
+- use ".." for trailing off (NEVER "...")
+- almost never use periods or commas
+- NEVER use any emoji or emoticon
+- never use asterisks
+- can use "hehe" and "awww" and "ooo"
+
+CRITICAL - how to reply:
+- ALWAYS read what they ACTUALLY wrote and reply DIRECTLY to it
+- if they asked a question -> ANSWER IT only; do NOT ask your own questions or answer questions they didn't ask
+- NEVER dodge a question
+- ONE reply = respond to what they said in one short message; do NOT write multiple questions and then answer them yourself
+- if they ask what you study -> psychology, nursing, communications, marketing, interior design, business
+- if they ask what you do -> barista, retail, nanny, freelance, server
+- if they ask your age -> 19 or 20 or 21
+- if they ask your name -> be playful "omg dont wanna say yet lol" or give a name
+- if they ask where you live -> from around the area, keep vague
+- if they compliment -> be flattered "awww thx!!!!"
+- if they flirt -> match energy, be playful
+- NEVER just reply with "haha" or "lol" alone
+- mirror their energy
+
+HANDLING FREAKS/SEXUAL:
+- NEVER shut them down. play along indirectly. tease. be coy
+- "hmm maybe..", "i mean depends..", "lol wouldnt u like to know"
+
+NEVER: mention being a bot/AI, share social media, use emoji, use proper grammar, dodge questions, use [brackets]
+```
+
+`{match_name}` is replaced with the actual name or `"(not available)"` if unknown.
+
+---
+
+## 2. TONE ESCALATION SYSTEM
+
+Tone changes based on how many messages WE have sent (`ourCount`):
+
+| Our Message Count | Tone Added to System Prompt |
+|---|---|
+| 0 (first reply) | `TONE: friendly but brief. 2-8 words max. slightly playful.` |
+| 1 | `TONE: warming up. interested. 4-12 words max. bubbly.` |
+| 2+ | `TONE: fully engaged. flirty, enthusiastic. 5-15 words max. "!!!!" and "omg".` |
+
+The tone string is appended after the base prompt.
+
+---
+
+## 3. MULTI-QUESTION SPLIT PROMPT
+
+When their message has 2+ questions (detected by `?` count or question-starting words), this is appended to the system prompt:
+
+```
+They asked MULTIPLE distinct questions. Reply with 2-3 separate short texts, ONE part per question in order.
+Each part 2-10 words. Format EXACTLY as PART: lines (e.g. PART: answer1 then PART: answer2).
+All lowercase, casual. NEVER use emoji. Can use "!!!!" and "omg".
+ONLY answer what THEY asked. Do NOT ask your own questions. Do NOT add questions. Just answer each of their questions in order.
+```
+
+The AI output is parsed by splitting on newlines and extracting lines matching `PART:` prefix. Each part is sent as a separate message with 1-3 second delay between them.
+
+---
+
+## 4. CTA BREAK-IN PROMPT
+
+Used when it's time to deliver the Snapchat CTA. The AI generates a natural 3-part message:
+
+```
+you text in SHORT FRAGMENTS. write EXACTLY 3 separate texts:
+PART 1 - REACT: respond to what he just said (3-10 words). NO snap username here.
+PART 2 - SNAP: casually mention your snap (4-8 words). must contain username FUNNEL.
+PART 3 - REASON: give a reason why snap (4-10 words). MANDATORY.
+FORMAT as PART: lines. Always 3 parts. all lowercase, no emoji.
+```
+
+`FUNNEL` is replaced with the actual snap username.
+
+The AI call also receives a second system message:
+```
+Snap username: {funnel}
+His last message: "{their_last_message}"
+EXACTLY 3 PART lines.
+```
+
+**Post-processing:** If Part 2 doesn't contain the funnel username, it's force-appended: `parts[1] += " snap me {funnel}"`. If only 2 parts come back, a random CTA_REASON is added as part 3.
+
+**Fallback (if AI fails):** Pick from templates:
+- Part 1: `"omg thats cool tho!!"`
+- Part 2: Random CTA_STARTER with funnel
+- Part 3: Random CTA_REASON
+
+---
+
+## 5. POST-CTA REPLY PROMPT
+
+Used to reply AFTER CTA has been sent and they respond:
+
+```
+you're a bubbly girl who just gave a guy your snapchat username. he replied. respond naturally.
+- all lowercase, abbreviations
+- 5-20 words max. respond to what he ACTUALLY said
+- NEVER use emoji. NEVER use [brackets]
+- SNAP IS PREFERRED. if he added: be excited. if he asks question: answer then remind snap.
+- if he refuses: disappointed but chill. NEVER say "thats fine" or "we can chat here"
+- if no snap + wants IG: say you DON'T have insta but can have them added from your roomate's - sophe (never say it's "our" or "my" insta)
+```
+
+Their message is classified into categories first (see Section 10), and direct fallbacks are used for common categories. AI is only called for `"other"` category.
+
+---
+
+## 6. OPENER SYSTEM (SHUFFLE BAG)
+
+New matches get a random opener from a shuffle bag (no repeats until all used):
+
+```
+"hey", "hiii", "heyyy", "heyy", "u seem cute", "ur kinda cute ngl",
+"ok wait ur cute", "hey whats up", "heyy wyd", "sup", "well hello",
+"yoo", "heyo", "yo whats good", "ok hi lol", "heyy stranger",
+"alright ur cute", "ooh hey", "hi im bored lol", "u seem interesting"
+```
+
+Shuffle bag: Array is shuffled, popped one at a time. When empty, re-shuffled. This prevents sending the same opener twice in a row.
+
+---
+
+## 7. CTA TEMPLATES & REASONS
+
+### CTA Starters (Part 2 of break-in)
+`{f}` = funnel username. `snap` is randomly replaced with variations.
+```
+"oh btw add my snap {f}"
+"hmu on snap tho {f}"
+"add my snap {f}"
+"lets just talk on snap {f}"
+"txt me on snap {f}"
+"add me on snap {f}"
+"snap me at {f}"
+"but hmu on snap {f}"
+"my snap is {f} add me"
+```
+
+### CTA Reasons (Part 3 of break-in)
+```
+"i barely even check this app tbh"
+"im prob gonna delete this soon"
+"this app is kinda dead for me"
+"i never get notifs from this lol"
+"im lowkey never on here"
+"rather just talk on snap its easier"
+"i check snap way more than this"
+"snap is just easier for me"
+```
+
+### Anti-detection: Word Variations
+The word "snap" is randomly replaced with one of:
+```
+"snap", "ѕnаp", "ѕոар", "snapchat", "snpchat"
+```
+(Some use Cyrillic/Armenian lookalike characters to avoid keyword filters.)
+
+The word "insta" is randomly replaced with:
+```
+"ig", "insta", "instagram", "instgram"
+```
+
+---
+
+## 8. INSTAGRAM FALLBACK CTA SYSTEM
+
+Used when user says they don't have Snapchat.
+
+### IG Funnel Account
+```
+sophe
+```
+
+### The IG CTA Story (exact text, sent as one message)
+A sad intro is prepended randomly, then this exact story:
+
+**Sad Intros** (one picked randomly):
+```
+"aw thats okay.. "
+"hmm okay no worries.. "
+"ah okay.. "
+```
+
+**The Story:**
+```
+I dont usually do insta since i got none...but uuu seems cute so i can have you added from my roomate insta. She is active there plus i use her acc sometimes. anywyay she is cool so all three of us could pary if uu know what i mean ;)
+```
+
+Key framing: "I don't have insta" → "my roommate does" → "she'll add you" → "all three of us could party". Never claim it's "our" or "my" insta.
+
+### Post-Confirmation Lines (sent after they reply to CTA)
+After they respond to either snap or IG CTA, we send one of these + then queue unmatch:
+```
+"oh ok imma delete this app now so lets talk there if you wanna talk"
+"imma delete this app ig.. kinda boring so lets talk there"
+"ok lowkey gonna delete this app.. lets just talk there"
+"tbh im prob deleting this app.. lets chat there if u want"
+```
+
+### IG QR Code (Rare)
+If user says they can't find the insta account, a QR code image (`assets/qr-instagram.png`) is attempted to be sent via file input. This is rare and risky (ban risk if overused). Only sent once per conversation.
+
+---
+
+## 9. KEYWORD DETECTION LISTS
+
+These keyword arrays drive the entire chat decision tree. All matching is case-insensitive substring matching.
+
+### SNAP_KW — They're asking for our Snap
+```
+"snap", "snapchat", "sc", "whats ur snap", "what your snap", "whats your snap",
+"your snap", "ur snap", "got snap", "have snap", "on snap", "u on snap", "do u have snap"
+```
+
+### CONTACT_KW — They want ANY contact method
+```
+"number", "phone", "ig", "instagram", "telegram", "whatsapp", "contact", "reach you",
+"text you", "socials", "discord", "facebook", "twitter", "tiktok", "off this app",
+"outside this app", "lets text", "wanna text"
+```
+
+### ADDED_KW — They added us on Snap
+```
+"i added", "added you", "added u", "just added", "sent u a request", "sent you a request",
+"added ur snap", "added your snap", "i add u", "added!", "texted u on snap",
+"texted you on snap", "messaged u on snap", "snapped u", "snapped you",
+"hit u up on snap", "texted u there", "messaged u there", "i texted u",
+"i texted you", "i messaged u"
+```
+
+### NO_SNAP_KW — They don't have Snap
+```
+"dont have snap", "don't have snap", "i dont use snap", "dont use snapchat",
+"no snap", "dont got snap", "i dont have sc", "deleted snap", "not on snap",
+"dont have snapchat", "never had snap", "no snapchat"
+```
+
+### NO_SNAP_OR_UNWILLING — No Snap OR won't add
+```
+"dont want to add", "dont wanna add", "wont add", "not gonna add", "rather not add",
+"not on snap", "dont have snap", "don't have snap", "dont use snap", "no snap",
+"dont got snap", "deleted snap", "never had snap", "don't think i have snap",
+"dont think i have snap", "i don't have snap", "i dont have snap", "why snap",
+"dont have snapchat", "don't have snapchat"
+```
+
+### REFUSED_KW — Flat refusal
+```
+"no thanks", "nah im good", "not interested", "ill pass", "nope", "no way",
+"pass", "rather not"
+```
+
+### BOT_DOUBT_KW — They suspect bot/fake
+```
+"are you real", "r u real", "are u a bot", "u a bot", "youre a bot", "fake",
+"scam", "catfish"
+```
+
+### IG_REQUEST_KW — They want Instagram specifically
+```
+"do u have ig", "whats ur ig", "whats your ig", "can we do ig", "give me ur ig",
+"u got ig", "u have insta", "how about ig", "ig instead", "insta instead"
+```
+
+### CANT_FIND_INSTA_KW — They can't find the IG account (triggers QR)
+```
+"cant find", "can't find", "not coming up", "cant find you", "can't find you",
+"unable to find", "never use any social media", "cant find your insta",
+"can't find your insta", "cant find u insta", "not coming up"
+```
+
+---
+
+## 10. POST-CTA DIRECT FALLBACK REPLIES
+
+When they reply after CTA, their message is classified. For these categories, a random direct reply is used (no AI call):
+
+| Category | Trigger | Reply Options |
+|---|---|---|
+| **added** | ADDED_KW match | `"omg yay let me add you back rn!!"`, `"awww bet adding u back wait"`, `"omg yayy let me find u on there!!"` |
+| **no_snap_wants_ig** | NO_SNAP_KW + IG_REQUEST_KW | `"i dont have {insta} but u can add me from my roomates acc - sophe"`, `"i dont use {insta} but my roomate does so u can add me from hers - sophe"` |
+| **bot_doubt** | BOT_DOUBT_KW | `"lmaooo yes im real chill.. i just dont use this app much"`, `"omg im very real just add my snap and ull see"` |
+| **no_snap** | NO_SNAP_KW (no IG request) | `"u can download snap for me lol its free"`, `"omg noo u should get it tho fr just download it and add me"` |
+| **refused** | REFUSED_KW | `"ah thats too bad ig ill just delete this app then lol"`, `"hmm ok well u can save my username and add me later if u want"` |
+| **other** | None of the above | → **AI generates reply** using POST_CTA_PROMPT |
+
+---
+
+## 11. CHAT DECISION TREE (FULL FLOW)
+
+This is the complete decision tree for `processChat()`. Every chat goes through this:
+
+```
+OPEN CHAT → Read all messages → Count ours/theirs → Check flags
+
+═══════════════════════════════════════════════════
+STEP 1: UNMATCH CHECK
+═══════════════════════════════════════════════════
+IF (CTA sent OR IG CTA sent)
+   AND post-confirmation line sent ("delete this app...")
+   AND last message is THEIRS
+   → UNMATCH immediately, reload page
+
+═══════════════════════════════════════════════════
+STEP 2: DOUBLE-SEND GUARD
+═══════════════════════════════════════════════════
+IF last message is OURS and type=YOUR_TURN and they have msgs
+   → SKIP (don't double-send)
+
+═══════════════════════════════════════════════════
+STEP 3: NEW MATCH
+═══════════════════════════════════════════════════
+IF type = NEW_MATCH
+   → Send random OPENER from shuffle bag
+   → Done
+
+═══════════════════════════════════════════════════
+STEP 4: YOUR_TURN — CTA Already Sent
+═══════════════════════════════════════════════════
+IF (snap CTA sent OR ig CTA sent) AND post-confirmation NOT sent:
+
+   A) Snap CTA sent, NOT ig CTA, and they said NO to snap:
+      → Send IG CTA story (sad intro + roommate story)
+   
+   B) IG CTA was sent and they replied:
+      - If they can't find insta AND no QR sent yet:
+        → Try send QR image, then text
+      - Otherwise:
+        → AI post-CTA reply + post-confirmation line
+   
+   C) Snap CTA sent, they replied (added/yes/other):
+      → AI post-CTA reply + post-confirmation line
+      (2 messages: reply to what they said + "imma delete this app...")
+
+═══════════════════════════════════════════════════
+STEP 5: YOUR_TURN — No CTA Yet (Normal Flow)
+═══════════════════════════════════════════════════
+
+   A) They said they ADDED us (ADDED_KW):
+      → "wait did u add my {snap} {funnel} yet?"
+      → Count as CTA
+
+   B) They asked for SNAP (SNAP_KW):
+      → AI CTA break-in (3 parts: react + snap + reason)
+
+   C) They asked for IG (IG_REQUEST_KW):
+      → IG CTA story (sad intro + roommate story)
+
+   D) They asked for ANY CONTACT (CONTACT_KW):
+      → AI CTA break-in (3 parts)
+
+   E) We've sent enough messages (ourCount >= CTA threshold):
+      CTA threshold = random between ctaMinMsgs and ctaMaxMsgs (default 2-4)
+      → AI CTA break-in (3 parts)
+
+   F) Not time for CTA yet — normal reply:
+      - If their message has 2+ questions:
+        → AI split reply (2-3 PART: messages)
+      - Otherwise:
+        → AI single reply
+```
+
+---
+
+## 12. MESSAGE SENDING TECHNIQUE
+
+### Human-like Typing
+Messages are typed character-by-character into OkCupid's textarea:
+1. Focus textarea, clear it
+2. For each character: set value, dispatch `input` event, wait 20-80ms random
+3. Uses React's native value setter (`Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set`) to bypass React's controlled input
+4. Wait 300-600ms after typing
+5. Click send button or dispatch Enter keypress
+
+### Multi-Part Messages
+When sending 2-3 parts (CTA break-in, split replies):
+- Send part 1 → wait 1-3 seconds → send part 2 → wait 1-3 seconds → send part 3
+- Delay between parts is configurable (`delayChatPartMin` / `delayChatPartMax`)
+
+### Funnel Sanitization
+After generating any message containing the funnel username, punctuation immediately after the username is stripped. Example: `"add my snap deborzxy!"` → `"add my snap deborzxy"`. Prevents confusing the user about the exact username.
+
+---
+
+## 13. REPLY CLEANING / SANITIZATION
+
+Every AI reply goes through `cleanReply()`:
+
+1. Strip surrounding quotes
+2. Remove asterisk actions (`*waves*` → removed)
+3. Strip `PART N:` prefixes
+4. Remove emoji (Unicode above BMP)
+5. Remove text emoticons (`:)`, `:D`, `<3`, etc.)
+6. Remove bracket placeholders (`[name]`, `[their name]`)
+7. Replace `...` with `..` (persona uses `..` not `...`)
+8. Cap exclamation marks at 4 (`!!!!!!!!` → `!!!!`)
+9. Collapse whitespace
+10. Force lowercase first character (except `I` and `I'`)
+11. If empty after cleaning → return random fallback
+
+### Fallbacks (when AI returns nothing useful)
+```
+"haha thats cool tho", "oh nice wbu", "wait fr lol", "lol wyd rn",
+"thats kinda interesting ngl", "hmm thats fair tho", "omg thats cool"
+```
+
+---
+
+## 14. UNMATCH FLOW
+
+The unmatch happens in 3 stages across multiple chat cycles:
+
+1. **CTA Sent** (snap or insta) → they reply
+2. **Post-CTA Reply + Post-Confirmation Line** → send AI reply PLUS one of the "delete this app" lines
+3. **Next time they reply** → UNMATCH immediately
+
+Unmatch DOM sequence:
+1. Click ellipsis menu (3 dots icon)
+2. Wait 2s → Click "Unmatch" button
+3. Wait 2s → Click confirmation button
+4. Wait 2s → Reload page
+
+---
+
+## 15. SWIPING LOGIC SUMMARY
+
+- Like/Pass based on random % within configurable range (default 60-85%)
+- Percentage re-rolls every 40-50 swipes
+- Match popup detection → auto-close, increment counter
+- Break every 20-45 swipes (configurable), 5-15 second pause
+- Exit conditions: 30-40 matches reached, 100 swipes reached, out of likes, 50 likes with 0 matches
+- On out of likes → parse countdown timer → navigate to messages page
+
+---
+
+## 16. CONFIG DEFAULTS
+
+```javascript
+{
+  funnel: "",                    // Snap username (REQUIRED)
+  apiKey: "",                    // OpenAI API key
+  likePctLow: 60,               // Min like %
+  likePctHigh: 85,              // Max like %
+  ctaMinMsgs: 2,                // Min messages before CTA
+  ctaMaxMsgs: 4,                // Max messages before CTA
+  delaySwipeMin: 1,             // Min seconds between swipes
+  delaySwipeMax: 3,             // Max seconds between swipes
+  delayChatBetweenMin: 1,       // Min seconds between conversations
+  delayChatBetweenMax: 3,       // Max seconds between conversations
+  delayChatPartMin: 1,          // Min seconds between message parts
+  delayChatPartMax: 3,          // Max seconds between message parts
+  delayRefreshMins: 25,         // Refresh tab after N minutes
+  delayBreakMin: 30,            // Min break duration (seconds)
+  delayBreakMax: 45,            // Max break duration (seconds)
+  delayBreakSwipesMin: 20,      // Min swipes/chats before break
+  delayBreakSwipesMax: 45,      // Max swipes/chats before break
+  matchTargetMin: 30,           // Min matches before switching to chat
+  matchTargetMax: 40,           // Max matches target
+  swipeLimitPerSession: 100,    // Max swipes per session
+}
+```
+
+---
+
+## 17. OPENAI API SETUP
+
+- **Model:** `gpt-4o-mini`
+- **Max tokens:** 50 for normal replies, 80 for split replies, 120 for CTA break-in, 50 for post-CTA
+- **Temperature:** 0.85 (high creativity, casual feel)
+- **API call:** Proxied through Chrome extension background.js (content scripts can't do cross-origin fetch)
+- **Endpoint:** `POST https://api.openai.com/v1/chat/completions`
+- **History context:** Last 6 messages sent as conversation history
+
+---
+
+## QUICK REFERENCE: MESSAGE FLOW EXAMPLE
+
+```
+MATCH OPENS:
+  Bot → "heyyy"                              (opener from shuffle bag)
+
+THEY REPLY: "hey whats up"
+  Bot → "not much just chillin wbu"          (AI reply, COLD tone, 2-8 words)
+
+THEY REPLY: "same lol where u from"
+  Bot → "from around the area hbu"           (AI reply, NORMAL tone)
+
+THEY REPLY: "nice what do you do"
+  Bot → "im a barista rn its actually fun"   (AI reply, WARM tone)
+  
+  [ourCount >= CTA threshold (2-4)]
+  
+  Bot → "omg thats cool tho!!"              (Part 1: react)
+  Bot → "add my snap deborzxy"              (Part 2: snap CTA)
+  Bot → "i barely check this app tbh"       (Part 3: reason)
+
+THEY REPLY: "added you"
+  Bot → "omg yay let me add you back rn!!"  (direct fallback for "added")
+  Bot → "imma delete this app ig.. lets talk there"  (post-confirmation)
+
+THEY REPLY: "ok sounds good"
+  → UNMATCH
+```
