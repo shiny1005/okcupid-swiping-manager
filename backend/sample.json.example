@@ -39,6 +39,10 @@
     "discovery_path": "/graphql/WebStackUsers",
     "initial_stacks_path": "/graphql/WebInitialStacksMenu"
   },
+  "profile": {
+    "bio": "snap; nadii3yz  \nthis app moves slow for me",
+    "realname": "Esthe r"
+  },
   "openai": {
     "api_key": "YOUR_OPENAI_API_KEY",
     "model": "gpt-4o-mini"

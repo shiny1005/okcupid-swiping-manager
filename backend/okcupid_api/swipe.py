@@ -275,6 +275,14 @@ def auto_swipe(
             if on_error:
                 on_error("(get_candidates)", e)
             errors += 1
+            # Surface the error in the summary so callers (and logs) can show it.
+            results.append(
+                {
+                    "stage": "get_candidates",
+                    "direction": direction,
+                    "error": str(e),
+                }
+            )
             break
         if not items:
             break

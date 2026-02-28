@@ -55,3 +55,8 @@ def get_openai_settings(path: Optional[Path] = None) -> Dict[str, Any]:
 def get_auto_chat_settings(path: Optional[Path] = None) -> Dict[str, Any]:
     """Return auto_chat settings: funnel, poll_seconds, CTA thresholds, delays."""
     return load_sample(path).get("auto_chat", {})
+
+
+def get_profile_settings(path: Optional[Path] = None) -> Dict[str, Any]:
+    """Return profile settings: bio text, etc."""
+    return load_sample(path).get("profile", {})

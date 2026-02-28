@@ -745,3 +745,154 @@ query WebSettingsPage {
 }"""
 
 
+WEB_PROFILE_SELF_QUERY = """fragment EssayFragment on Essay {
+  id
+  groupId
+  groupTitle
+  isPassion
+  title
+  placeholder
+  rawContent
+  processedContent
+  __typename
+}
+
+fragment EssaySetup on User {
+  allEssays {
+    ...EssayFragment
+    __typename
+  }
+  essayGroups {
+    id
+    title
+    isPassion
+    __typename
+  }
+  __typename
+}
+
+fragment SelfviewEssays on User {
+  essaysWithDefaultsAndUniqueIds {
+    ...EssayFragment
+    __typename
+  }
+  essayAlbumId
+  __typename
+}
+
+fragment ProfileHeader on User {
+  id
+  displayname
+  age
+  photos {
+    id
+    square400
+    __typename
+  }
+  userLocation {
+    id
+    publicName
+    __typename
+  }
+  selfieVerifiedStatus(shouldReturnStatus: true)
+  __typename
+}
+
+fragment SelfProfileHeader on User {
+  id
+  isIncognito
+  __typename
+}
+
+fragment Basics on User {
+  displayname
+  username
+  age
+  selfieVerifiedStatus(shouldReturnStatus: true)
+  userLocation {
+    id
+    publicName
+    __typename
+  }
+  __typename
+}
+
+fragment PhotoInfo on Photo {
+  id
+  caption
+  original
+  square60
+  square82
+  square100
+  square120
+  square160
+  square225
+  square400
+  square800
+  __typename
+}
+
+fragment DesktopProfileThumbs on User {
+  hasPhotos
+  photos {
+    ...PhotoInfo
+    __typename
+  }
+  __typename
+}
+
+fragment Badges on User {
+  badges {
+    name
+    __typename
+  }
+  __typename
+}
+
+query WebProfileSelf($id: String!) {
+  user(id: $id) {
+    id
+    ...EssaySetup
+    ...SelfviewEssays
+    ...ProfileHeader
+    ...SelfProfileHeader
+    ...Basics
+    ...DesktopProfileThumbs
+    ...Badges
+    shouldSeeIncognitoPromo
+    __typename
+  }
+}"""
+
+
+UPDATE_ESSAY_MUTATION = """fragment EssayFragment on Essay {
+  id
+  groupId
+  groupTitle
+  isPassion
+  title
+  placeholder
+  rawContent
+  processedContent
+  __typename
+}
+
+mutation updateEssay($input: EssayUpdateInput!) {
+  essayUpdate(input: $input) {
+    essay {
+      ...EssayFragment
+      __typename
+    }
+    __typename
+  }
+}"""
+
+
+WEB_UPDATE_REALNAME_MUTATION = """mutation WebUpdateRealname($input: UserUpdateRealnameInput!) {
+  userUpdateRealname(input: $input) {
+    success
+    errorCode
+    __typename
+  }
+}"""
+
