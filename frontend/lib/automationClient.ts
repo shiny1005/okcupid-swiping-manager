@@ -1,12 +1,12 @@
 import { Account, Job, LogEntry, RateConfig } from "@/components/dashboard/types";
 
-/** Backend API base URL (no trailing slash). Set NEXT_PUBLIC_BACKEND_URL or defaults to http://localhost:8000 */
+/** Backend API base URL (no trailing slash). Set NEXT_PUBLIC_BACKEND_URL or defaults to http://216.106.186.119:8000 */
 function getApiBase(): string {
   const raw =
     typeof process.env.NEXT_PUBLIC_BACKEND_URL === "string" &&
     process.env.NEXT_PUBLIC_BACKEND_URL.trim() !== ""
       ? process.env.NEXT_PUBLIC_BACKEND_URL.trim()
-      : "http://localhost:8000";
+      : "http://216.106.186.119:8000";
   return raw.replace(/\/+$/, "");
 }
 

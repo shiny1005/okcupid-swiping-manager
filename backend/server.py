@@ -896,11 +896,31 @@ async def get_profile_info_api(account_id: str):
             **summary,
         }
     except Exception as e:
+        err_str = str(e)
+        # OkCupid returned 403/401 → session invalid or blocked
+        if "403" in err_str or "Forbidden" in err_str:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "OkCupid session expired or access forbidden. Update token/cookie in Edit Account or try again later.",
+                    "error": err_str,
+                },
+                headers=_CORS_HEADERS,
+            )
+        if "401" in err_str or "Unauthorized" in err_str:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "detail": "OkCupid login required. Update your token and cookie in Edit Account.",
+                    "error": err_str,
+                },
+                headers=_CORS_HEADERS,
+            )
         return JSONResponse(
             status_code=500,
             content={
                 "detail": "Failed to load profile from OkCupid.",
-                "error": str(e),
+                "error": err_str,
             },
             headers=_CORS_HEADERS,
         )

@@ -3,13 +3,13 @@
 import { useEffect, useRef, useCallback } from "react";
 import type { LogEntry } from "@/components/dashboard/types";
 
-/** WebSocket URL (same host as API). Uses NEXT_PUBLIC_BACKEND_URL or http://localhost:8000 */
+/** WebSocket URL (same host as API). Uses NEXT_PUBLIC_BACKEND_URL or http://216.106.186.119:8000 */
 function getWsUrl(): string {
   const raw =
     typeof process.env.NEXT_PUBLIC_BACKEND_URL === "string" &&
     process.env.NEXT_PUBLIC_BACKEND_URL.trim() !== ""
       ? process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "")
-      : "http://localhost:8000";
+      : "http://216.106.186.119:8000";
   const url = new URL(raw);
   const protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${url.host}/ws`;
