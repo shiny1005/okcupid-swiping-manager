@@ -229,9 +229,21 @@ class UpdateRealnameRequest(BaseModel):
 
 app = FastAPI(title="OkCupid Automation API")
 
+# CORS: allow frontend (Vercel + localhost). Set CORS_ORIGINS env to add more (comma-separated).
+_default_origins = [
+    "https://okcupid-swiping-manager.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_origins_env:
+    _cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+else:
+    _cors_origins = _default_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
