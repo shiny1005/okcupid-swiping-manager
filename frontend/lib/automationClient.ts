@@ -1,15 +1,23 @@
 import { Account, Job, LogEntry, RateConfig } from "@/components/dashboard/types";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL && process.env.NEXT_PUBLIC_BACKEND_URL !== ""
-    ? process.env.NEXT_PUBLIC_BACKEND_URL
-    : "http://localhost:8000";
+/** Backend API base URL (no trailing slash). Set NEXT_PUBLIC_BACKEND_URL or defaults to http://localhost:8000 */
+function getApiBase(): string {
+  const raw =
+    typeof process.env.NEXT_PUBLIC_BACKEND_URL === "string" &&
+    process.env.NEXT_PUBLIC_BACKEND_URL.trim() !== ""
+      ? process.env.NEXT_PUBLIC_BACKEND_URL.trim()
+      : "http://localhost:8000";
+  return raw.replace(/\/+$/, "");
+}
+
+const API_BASE = getApiBase();
 
 async function postJson<TResponse = unknown>(
   path: string,
   body: unknown,
 ): Promise<TResponse> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = path.startsWith("/") ? `${API_BASE}${path}` : `${API_BASE}/${path}`;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -32,7 +40,8 @@ async function postJson<TResponse = unknown>(
 }
 
 async function getJson<TResponse = unknown>(path: string): Promise<TResponse> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = path.startsWith("/") ? `${API_BASE}${path}` : `${API_BASE}/${path}`;
+  const res = await fetch(url, {
     method: "GET",
   });
 
@@ -50,7 +59,8 @@ async function putJson<TResponse = unknown>(
   path: string,
   body: unknown,
 ): Promise<TResponse> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = path.startsWith("/") ? `${API_BASE}${path}` : `${API_BASE}/${path}`;
+  const res = await fetch(url, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -73,7 +83,8 @@ async function putJson<TResponse = unknown>(
 }
 
 async function deleteRequest(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = path.startsWith("/") ? `${API_BASE}${path}` : `${API_BASE}/${path}`;
+  const res = await fetch(url, {
     method: "DELETE",
   });
 

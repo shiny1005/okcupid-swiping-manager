@@ -3,15 +3,16 @@
 import { useEffect, useRef, useCallback } from "react";
 import type { LogEntry } from "@/components/dashboard/types";
 
-const WS_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL && process.env.NEXT_PUBLIC_BACKEND_URL !== ""
-    ? process.env.NEXT_PUBLIC_BACKEND_URL
-    : "http://localhost:8000";
-
+/** WebSocket URL (same host as API). Uses NEXT_PUBLIC_BACKEND_URL or http://localhost:8000 */
 function getWsUrl(): string {
-  const url = new URL(WS_BASE);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return `${url.origin}/ws`;
+  const raw =
+    typeof process.env.NEXT_PUBLIC_BACKEND_URL === "string" &&
+    process.env.NEXT_PUBLIC_BACKEND_URL.trim() !== ""
+      ? process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "")
+      : "http://localhost:8000";
+  const url = new URL(raw);
+  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${url.host}/ws`;
 }
 
 export type RealtimeEvent =

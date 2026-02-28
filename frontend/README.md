@@ -16,6 +16,14 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Backend connection
+
+The app talks to the Python/FastAPI backend for accounts, logs, and automation. To connect:
+
+1. **Start the backend** from the project root: `cd backend && uvicorn server:app --reload` (default: http://localhost:8000).
+2. **Optional:** Create `frontend/.env.local` and set `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000` if the backend runs on a different URL. No trailing slash. Restart the Next.js dev server after changing env.
+3. If the backend is not running or the URL is wrong, API calls and the WebSocket will fail; check the browser console and ensure the backend is reachable.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
