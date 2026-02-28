@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Tuple
 from bson import ObjectId
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 
@@ -230,6 +231,11 @@ class UpdateRealnameRequest(BaseModel):
 app = FastAPI(title="OkCupid Automation API")
 
 # CORS: allow any origin for flexible access (any frontend can call this API).
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "*",
+    "Access-Control-Allow-Headers": "*",
+}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -238,6 +244,22 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    """Return 500 with CORS headers so the frontend gets a proper response on server errors."""
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=_CORS_HEADERS,
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc) or "Internal server error"},
+        headers=_CORS_HEADERS,
+    )
 
 
 @app.websocket("/ws")
@@ -866,14 +888,22 @@ async def get_profile_info_api(account_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    client = _build_okcupid_client_from_account(doc)
-    # Reuse the shared helper from examples/show_profile_settings.py so the
-    # backend and CLI example stay in sync.
-    summary = get_profile_summary(client)
-    return {
-        "accountId": account_id,
-        **summary,
-    }
+    try:
+        client = _build_okcupid_client_from_account(doc)
+        summary = get_profile_summary(client)
+        return {
+            "accountId": account_id,
+            **summary,
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Failed to load profile from OkCupid.",
+                "error": str(e),
+            },
+            headers=_CORS_HEADERS,
+        )
 
 
 @app.post("/api/profile/update-bio")
