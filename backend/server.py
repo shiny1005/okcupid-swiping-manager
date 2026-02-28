@@ -1,8 +1,11 @@
 import base64
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Tuple
+
+logger = logging.getLogger(__name__)
 
 from bson import ObjectId
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -897,8 +900,14 @@ async def get_profile_info_api(account_id: str):
         }
     except Exception as e:
         err_str = str(e)
+        logger.exception(
+            "GET /api/profiles/%s failed: %s",
+            account_id,
+            err_str,
+        )
+        err_lower = err_str.lower()
         # OkCupid returned 403/401 → session invalid or blocked
-        if "403" in err_str or "Forbidden" in err_str:
+        if "403" in err_str or "forbidden" in err_lower:
             return JSONResponse(
                 status_code=403,
                 content={
@@ -907,7 +916,7 @@ async def get_profile_info_api(account_id: str):
                 },
                 headers=_CORS_HEADERS,
             )
-        if "401" in err_str or "Unauthorized" in err_str:
+        if "401" in err_str or "unauthorized" in err_lower:
             return JSONResponse(
                 status_code=401,
                 content={
